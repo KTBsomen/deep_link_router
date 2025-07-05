@@ -8,10 +8,10 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  android_play_install_referrer: ^0.4.0
   app_links: ^6.4.0
   flutter:
     sdk: flutter
-  install_referrer: ^1.2.1
   shared_preferences: ^2.5.3
 
 

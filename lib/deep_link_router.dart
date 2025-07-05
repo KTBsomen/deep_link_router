@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_links/app_links.dart';
-import 'package:install_referrer/install_referrer.dart';
+import 'package:android_play_install_referrer/android_play_install_referrer.dart';
 
 typedef DeepLinkHandlerFn =
     Future<void> Function(BuildContext context, Uri uri);
@@ -18,31 +18,49 @@ class DeepLinkRoute {
 }
 
 class DeepLinkRouter {
-  final List<DeepLinkRoute> routes;
-  final DeepLinkHandlerFn? onUnhandled;
+  static final DeepLinkRouter instance = DeepLinkRouter._internal();
+
+  factory DeepLinkRouter() => instance;
+
+  DeepLinkRouter._internal();
+
+  // Keep existing fields
+  late List<DeepLinkRoute> routes;
+  DeepLinkHandlerFn? onUnhandled;
+
   static const String _pendingUriKey = '__pending_deep_link_uri';
   late final AppLinks _appLinks;
   late final Stream<Uri> _uriStream;
 
-  DeepLinkRouter({required this.routes, this.onUnhandled});
+  void configure({
+    required List<DeepLinkRoute> routes,
+    DeepLinkHandlerFn? onUnhandled,
+  }) {
+    this.routes = routes;
+    this.onUnhandled = onUnhandled;
+  }
 
-  /// Call in initState
   Future<void> initialize(BuildContext context) async {
+    if (routes.isEmpty) {
+      throw Exception(
+        'DeepLinkRouter not configured. Call configure(...) before initialize().',
+      );
+    }
+
     _appLinks = AppLinks();
     await _handleInitialUri(context);
     _listenToUriChanges(context);
     _fallbackPlatformHandling(context);
   }
 
-  /// Call after login/register
-  Future<void> completePendingNavigation(BuildContext context) async {
+  static Future<void> completePendingNavigation(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_pendingUriKey);
     if (stored != null) {
       prefs.remove(_pendingUriKey);
       final uri = Uri.tryParse(stored);
       if (uri != null) {
-        await _matchAndHandle(context, uri);
+        await instance._matchAndHandle(context, uri);
       }
     }
   }
@@ -58,14 +76,25 @@ class DeepLinkRouter {
 
   void _listenToUriChanges(BuildContext context) {
     _uriStream = _appLinks.uriLinkStream;
-    _uriStream.listen((uri) async {
-      if (uri != null) {
-        await _matchAndHandle(context, uri);
-      }
+    _uriStream.listen((uri) {
+      if (uri == null) return;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return; // Flutter 3.7+
+
+        // Defer handling slightly to ensure context is ready
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (context.mounted) {
+            _matchAndHandle(context, uri);
+          }
+        });
+      });
     }, onError: (_) {});
   }
 
   Future<void> _matchAndHandle(BuildContext context, Uri uri) async {
+    if (routes.isEmpty) return;
+
     for (final route in routes) {
       if (route.matcher(uri)) {
         await _storePendingUri(uri);
@@ -95,8 +124,9 @@ class DeepLinkRouter {
 
   Future<void> _checkInstallReferrer(BuildContext context) async {
     try {
-      final referrer = await InstallReferrer.referrer;
-      final uri = Uri.tryParse(referrer.name ?? '');
+      final referrer = await AndroidPlayInstallReferrer.installReferrer;
+      final uri = Uri.tryParse(referrer.installReferrer ?? '');
+      print('Install Referrer: $referrer');
       if (uri != null) await _matchAndHandle(context, uri);
     } catch (_) {}
   }
