@@ -283,4 +283,4 @@ Feel free to contribute via PR or raise an issue for enhancements.
 
 ## 📄 License
 
-MIT © 2025 YourName
+AGPL-3.0 license © 2025 somen das
