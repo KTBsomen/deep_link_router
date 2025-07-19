@@ -1,0 +1,35 @@
+name: deep_link_router
+description: "A powerful, extensible deep link handler for Flutter apps with cold install support."
+version: 0.0.3
+homepage: "https://github.com/KTBsomen/deep_link_router.git"
+repository: "https://github.com/KTBsomen/deep_link_router.git"
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=1.17.0"
+
+dependencies:
+  android_play_install_referrer: ^0.4.0
+  app_links: ^6.4.0
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: deep_link_router
+        pluginClass: DeepLinkRouterPlugin
+      ios:
+        pluginClass: DeepLinkRouterPlugin
